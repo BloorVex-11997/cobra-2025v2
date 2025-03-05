@@ -295,6 +295,39 @@
                 "target": "v5",
                 "user_files": [],
                 "version": "8.3.8"
+            },
+            "uvlib": {
+                "location": "C:\\Users\\ayaan\\AppData\\Roaming\\PROS\\templates\\uvlib@0.4.3",
+                "metadata": {
+                    "origin": "uvlib"
+                },
+                "name": "uvlib",
+                "py/object": "pros.conductor.templates.local_template.LocalTemplate",
+                "supported_kernels": "^4.1.1",
+                "system_files": [
+                    "include\\uvlib\\commands\\advanced_commands\\wait_command.hpp",
+                    "include\\uvlib\\commands\\advanced_commands\\instant_command.hpp",
+                    "include\\uvlib\\scheduler.hpp",
+                    "include\\uvlib\\command_api.hpp",
+                    "include\\uvlib\\typedefs.hpp",
+                    "include\\uvlib\\input\\controller.hpp",
+                    "firmware\\uvlib.a",
+                    "include\\uvlib\\commands\\advanced_commands\\wait_until_command.hpp",
+                    "include\\uvlib\\input_api.hpp",
+                    "include\\uvlib\\singleton.hpp",
+                    "include\\uvlib\\commands\\command.hpp",
+                    "include\\uvlib\\input\\trigger.hpp",
+                    "include\\uvlib\\commands\\commandptr.hpp",
+                    "include\\uvlib\\commands\\advanced_commands\\function_command.hpp",
+                    "include\\uvlib\\enums.hpp",
+                    "include\\uvlib\\input\\joystick.hpp",
+                    "include\\uvlib\\subsystem.hpp",
+                    "include\\uvlib\\commands\\advanced_commands\\sequential_command_group.hpp",
+                    "include\\uvlib\\commands\\command_helper.hpp"
+                ],
+                "target": "v5",
+                "user_files": [],
+                "version": "0.4.3"
             }
         },
         "upload_options": {},
