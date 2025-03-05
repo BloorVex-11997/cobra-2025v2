@@ -1,7 +1,7 @@
 #pragma once
 
 /* Ports */
-const int CLAMP_PORT = 1;
+const int CLAMP_PORT = 10;
 
 /* Configuration */
 const int CLAMP_VOLTAGE = 64;
