@@ -1,77 +1,31 @@
 #include "main.h"
-#include "lemlib/api.hpp"
+#include "commands/clamp/clamp_grab.hpp"
+#include "commands/clamp/clamp_release.hpp"
+#include "commands/clamp/set_clamp_state.hpp"
+#include "commands/drive/auto_follow.hpp"
+#include "commands/drive/teleop_drive.hpp"
+#include "commands/intake/disable_intake.hpp"
+#include "commands/intake/move_intake.hpp"
+#include "constants/clamp_constants.hpp"
+#include "pros/misc.h"
+#include "subsystems/clamp.hpp"
+#include "subsystems/drivetrain.hpp"
+#include "subsystems/intake.hpp"
+#include "uvlib/commands/advanced_commands/instant_command.hpp"
+#include "uvlib/enums.hpp"
+#include "uvlib/input/controller.hpp"
+#include "uvlib/input/trigger.hpp"
+#include "uvlib/scheduler.hpp"
 
-//creates motor group
-pros::MotorGroup left_motor_group({13, 19}, pros::MotorGearset::green); 
-pros::MotorGroup right_motor_group({-2, -8}, pros::MotorGearset::green);
+#define MINT 100000000
+#define CLAMP_VOLTAGE 127
 
-// drivetrain settings
-lemlib::Drivetrain drivetrain(&left_motor_group, // left motor group
-	&right_motor_group, // right motor group
-	15.25, // 10 inch track width
-	lemlib::Omniwheel::OLD_4, // using new 4" omnis
-	88, // drivetrain rpm is 360
-	0 // horizontal drift is 2 (for now)
-);
+ASSET(example_txt);
 
-pros::Imu imu(20);
-
-//sets up ODOM for lemlib
-lemlib::OdomSensors sensors(nullptr, // vertical tracking wheel 1, set to null
-	nullptr, // vertical tracking wheel 2, set to nullptr as we are using IMEs
-	nullptr, // horizontal tracking wheel 1
-	nullptr, // horizontal tracking wheel 2, set to nullptr as we don't have a second one
-	&imu // inertial sensor
-);
-
-// lateral PID controller
-lemlib::ControllerSettings lateral_controller(10, // proportional gain (kP)
-                                              0, // integral gain (kI)
-                                              3, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in inches
-                                              100, // small error range timeout, in milliseconds
-                                              3, // large error range, in inches
-                                              500, // large error range timeout, in milliseconds
-                                              20 // maximum acceleration (slew)
-);
-
-// angular PID controller
-lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
-                                              0, // integral gain (kI)
-                                              350, // derivative gain (kD)
-                                              0, // anti windup
-                                              0, // small error range, in degrees
-                                              0, // small error range timeout, in milliseconds
-                                              0, // large error range, in degrees
-                                              0, // large error range timeout, in milliseconds
-                                              0 // maximum acceleration (slew)
-);
-
-// create the chassis
-lemlib::Chassis chassis(drivetrain, // drivetrain settings
-	lateral_controller, // lateral PID settings
-	angular_controller, // angular PID settings
-	sensors // odometry sensors
-);
-
-pros::Controller controller(pros::E_CONTROLLER_MASTER);
-
-/**
- * A callback function for LLEMU's center button.
- *
- * When this callback is fired, it will toggle line 2 of the LCD text between
- * "I was pressed!" and nothing.
- */
-void on_center_button() {
-	static bool pressed = false;
-	pressed = !pressed;
-	if (pressed) {
-		pros::lcd::set_text(2, "I was pressed!");
-	} else {
-		pros::lcd::clear_line(2);
-	}
-}
+uvl::Controller *controller;
+Drivetrain *drivetrain;
+Intake *intake;
+Clamp *clamp;
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -80,14 +34,18 @@ void on_center_button() {
  * to keep execution time for this mode under a few seconds.
  */
 void initialize() {
-	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Hello PROS User!");
+  pros::lcd::initialize();
 
-	pros::lcd::register_btn1_cb(on_center_button);
-	
-	autonomous();
+  controller = new uvl::Controller(pros::E_CONTROLLER_MASTER);
+  drivetrain = new Drivetrain();
+  intake = new Intake();
+  clamp = new Clamp();
 
+  drivetrain->set_default_command(TeleopDrive(drivetrain, controller).to_ptr());
 
+  uvl::Scheduler::get_instance().initialize();
+
+  // autonomous();
 }
 
 /**
@@ -120,12 +78,32 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
-	chassis.calibrate();
-	chassis.setPose(0, 0, 0);
-    // turn to face heading 90 with a very long timeout
-    chassis.turnToHeading(90, 100000);
-	
+  lemlib::Chassis *chassis = drivetrain->get_chassis();
+  clamp->set_voltage(-CLAMP_VOLTAGE * 0.5);
 
+  chassis->moveToPoint(0, -30, MINT, {.forwards = false}, false);
+  pros::delay(200);
+
+  clamp->set_voltage(CLAMP_VOLTAGE);
+  pros::delay(200);
+
+  intake->enable();
+  pros::delay(1500);
+
+  intake->reverse();
+  pros::delay(500);
+
+  intake->disable();
+  chassis->turnToHeading(90, 1000, {}, false);
+  pros::delay(200);
+
+  intake->enable();
+  chassis->moveToPoint(25, -30, MINT, {}, false);
+  pros::delay(1000);
+
+  intake->disable();
+
+  // uvl::Scheduler::get_instance().mainloop();
 }
 
 /**
@@ -142,4 +120,20 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
+  controller->get_trigger(uvl::TriggerButton::kR2)
+      .on_true(MoveIntake(intake, false).to_ptr());
+
+  controller->get_trigger(uvl::TriggerButton::kL2)
+      .on_true(DisableIntake(intake).to_ptr());
+
+  controller->get_trigger(uvl::TriggerButton::kA)
+      .on_true(MoveIntake(intake, true).to_ptr());
+
+  controller->get_trigger(uvl::TriggerButton::kR1)
+      .on_true(ClampGrab(clamp).to_ptr());
+
+  controller->get_trigger(uvl::TriggerButton::kL1)
+      .on_true(ClampRelease(clamp).to_ptr());
+
+  uvl::Scheduler::get_instance().mainloop();
 }

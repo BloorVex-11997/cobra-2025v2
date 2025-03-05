@@ -11,6 +11,6 @@ void ClampRelease::initialize() {
   m_clamp->set_voltage(-CLAMP_VOLTAGE);
 }
 
-bool ClampRelease::is_finished() { return pros::millis() >= m_end_time; }
+bool ClampRelease::is_finished() { return false; }
 
 void ClampRelease::end(bool interrupted) { m_clamp->set_voltage(0); }
